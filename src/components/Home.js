@@ -17,7 +17,11 @@ const styles = (theme) => ({
     overflow: "hidden",
     backgroundColor: theme.palette.background.paper,
     textAlign: "center",
-    margin: "30px",
+    margin: "10px 30px 30px 30px",
+  },
+  results: {
+    marginBottom: "25px",
+    textAlign: "center",
   },
   infiniteScroll: {
     overflow: "hidden !important",
@@ -62,6 +66,7 @@ function Home(props) {
   const [savedQueries, setSavedQueries] = useState([]);
   const [open, setOpen] = useState(false);
   const [dialogImage, setDialogImage] = useState("");
+  const [results, setResults] = useState("");
   const [color] = useState("#000");
 
   useEffect(() => {
@@ -134,6 +139,7 @@ function Home(props) {
         setRecentImages([...recentImages, ...urlArr]);
         setCurrRecentPage(currRecentPage + 1);
       }
+      setResults(res?.data?.photos?.total);
     });
   }
 
@@ -163,70 +169,79 @@ function Home(props) {
       } else {
         setSearchImages([...searchImages, ...urlArr]);
       }
+      setResults(res?.data?.photos?.total);
     });
   }
 
   return (
-    <div className={classes.root}>
-      {value !== "" ? (
-        <InfiniteScroll
-          className={classes.infiniteScroll}
-          next={() => searchKeyword("scroll")}
-          dataLength={searchImages.length}
-          hasMore={true}
-          loader={<BeatLoader color={color} css={override} size={20} />}
-        >
-          <Grid className={classes.container} container spacing={3}>
-            {searchImages.map((image, index) => (
-              <Grid item sm={4} lg={3} xl={3} xs={12} key={index}>
-                <img
-                  className={classes.scrollImage}
-                  src={image.url}
-                  alt={image.title}
-                  onClick={() => handleClickOpen(image)}
-                />
-              </Grid>
-            ))}
-          </Grid>
-        </InfiniteScroll>
-      ) : (
-        <InfiniteScroll
-          className={classes.infiniteScroll}
-          next={() => getRecent("scroll")}
-          dataLength={recentImages.length}
-          hasMore={true}
-          loader={<BeatLoader color={color} css={override} size={20} />}
-        >
-          <Grid className={classes.container} container spacing={3}>
-            {recentImages.map((image, index) => (
-              <Grid item sm={4} lg={3} xl={3} xs={12} key={index}>
-                <img
-                  className={classes.scrollImage}
-                  src={image.url}
-                  alt={image.title}
-                  onClick={() => handleClickOpen(image)}
-                />
-              </Grid>
-            ))}
-          </Grid>
-        </InfiniteScroll>
+    <>
+      {((searchImages && searchImages.length > 0) ||
+        (recentImages && recentImages.length > 0)) && (
+        <p className={classes.results}>
+          <strong>{results}</strong> results found
+        </p>
       )}
+      <div className={classes.root}>
+        {value !== "" ? (
+          <InfiniteScroll
+            className={classes.infiniteScroll}
+            next={() => searchKeyword("scroll")}
+            dataLength={searchImages.length}
+            hasMore={true}
+            loader={<BeatLoader color={color} css={override} size={20} />}
+          >
+            <Grid className={classes.container} container spacing={3}>
+              {searchImages.map((image, index) => (
+                <Grid item sm={4} lg={3} xl={3} xs={12} key={index}>
+                  <img
+                    className={classes.scrollImage}
+                    src={image.url}
+                    alt={image.title}
+                    onClick={() => handleClickOpen(image)}
+                  />
+                </Grid>
+              ))}
+            </Grid>
+          </InfiniteScroll>
+        ) : (
+          <InfiniteScroll
+            className={classes.infiniteScroll}
+            next={() => getRecent("scroll")}
+            dataLength={recentImages.length}
+            hasMore={true}
+            loader={<BeatLoader color={color} css={override} size={20} />}
+          >
+            <Grid className={classes.container} container spacing={3}>
+              {recentImages.map((image, index) => (
+                <Grid item sm={4} lg={3} xl={3} xs={12} key={index}>
+                  <img
+                    className={classes.scrollImage}
+                    src={image.url}
+                    alt={image.title}
+                    onClick={() => handleClickOpen(image)}
+                  />
+                </Grid>
+              ))}
+            </Grid>
+          </InfiniteScroll>
+        )}
 
-      <Dialog
-        maxWidth="md"
-        onClose={handleClose}
-        aria-labelledby="customized-dialog-title"
-        open={open}
-      >
-        <DialogContent className={classes.dialogContent}>
-          <img
-            className={classes.dialogImage}
-            src={dialogImage.url}
-            alt={dialogImage.title}
-          />
-        </DialogContent>
-      </Dialog>
-    </div>
+        <Dialog
+          maxWidth="md"
+          onClose={handleClose}
+          aria-labelledby="customized-dialog-title"
+          open={open}
+        >
+          <DialogContent className={classes.dialogContent}>
+            <img
+              className={classes.dialogImage}
+              src={dialogImage.url}
+              alt={dialogImage.title}
+            />
+          </DialogContent>
+        </Dialog>
+      </div>
+    </>
   );
 }
 
