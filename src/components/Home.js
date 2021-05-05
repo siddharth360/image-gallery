@@ -1,276 +1,237 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import PropTypes from "prop-types";
-import { makeStyles } from "@material-ui/core/styles";
-import Tabs from "@material-ui/core/Tabs";
-import Tab from "@material-ui/core/Tab";
-import Typography from "@material-ui/core/Typography";
-import Box from "@material-ui/core/Box";
+import { withStyles } from "@material-ui/core/styles";
+import { Dialog, Grid, DialogContent } from "@material-ui/core";
 import axios from "axios";
-import Product from "./Product";
-import api, { genericHeaders, productsApi } from "../config";
-import ProductAction from "./ProductAction";
+import InfiniteScroll from "react-infinite-scroll-component";
+import BeatLoader from "react-spinners/BeatLoader";
+import { css } from "@emotion/core";
+import { recentUrl, searchUrl } from "../config";
+import "../App.css";
 
-const useStyles = makeStyles((theme) => ({
+const styles = (theme) => ({
   root: {
-    flexGrow: 1,
-  },
-  productsContainer: {
-    padding: "15px",
-    [theme.breakpoints.up("sm")]: {
-      paddingLeft: "65px",
-    },
-    [theme.breakpoints.up("md")]: {
-      paddingLeft: "65px",
-    },
-    [theme.breakpoints.up("lg")]: {
-      paddingLeft: "25px",
-    },
-  },
-  productsText: {
-    color: "#000000",
-    fontSize: "20px",
-    fontWeight: 500,
-    margin: 0,
-  },
-  padding: {
-    padding: theme.spacing(3),
-  },
-  demo1: {
+    display: "flex",
+    flexWrap: "wrap",
+    justifyContent: "space-around",
+    overflow: "hidden",
     backgroundColor: theme.palette.background.paper,
+    textAlign: "center",
+    margin: "30px",
   },
-  demo2: {
-    backgroundColor: "#2e1534",
+  infiniteScroll: {
+    overflow: "hidden !important",
   },
-  categories: {
-    margin: "0px 6px 0px 6px",
+  scrollImage: {
+    "&:hover": {
+      cursor: "pointer",
+    },
+    height: "300px",
+    width: "300px",
+    objectFit: "cover",
   },
-  category: {
-    padding: "6px 6px",
+  dialogContent: {
+    height: "600px",
+    width: "600px",
+    overflow: "hidden",
+    [theme.breakpoints.down("xs")]: {
+      width: "auto",
+      height: "auto",
+    },
   },
-  categoryData: {
-    color: "white",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    height: "65px",
-    backgroundColor: "rgba(0,0,0,0.22)",
-    width: "120px",
-    cursor: "pointer",
-    backgroundSize: "cover",
-    backgroundPosition: "center",
-    borderRadius: "4px",
-    backfaceVisibility: "hidden",
-    fontSize: "13px",
-    opacity: "0.8",
+  dialogImage: {
+    width: "100%",
+    height: "100%",
+    objectFit: "contain",
   },
-  activeCategoryData: {
-    color: "white",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    height: "65px",
-    backgroundColor: "rgba(0,0,0,0.22)",
-    width: "120px",
-    cursor: "pointer",
-    backgroundSize: "cover",
-    backgroundPosition: "center",
-    borderRadius: "4px",
-    backfaceVisibility: "hidden",
-    fontSize: "14px",
-    fontWeight: "600",
-    opacity: "1",
-  },
-}));
+});
 
-function TabPanel(props) {
-  const { children, value, index, ...other } = props;
+const override = css`
+  display: block;
+  margin: 50px auto 0px auto;
+  border-color: black;
+`;
 
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`scrollable-auto-tabpanel-${index}`}
-      aria-labelledby={`scrollable-auto-tab-${index}`}
-      {...other}
-    >
-      {value === index && (
-        <Box p={3}>
-          <Typography component={"span"}>{children}</Typography>
-        </Box>
-      )}
-    </div>
-  );
-}
-
-TabPanel.propTypes = {
-  children: PropTypes.node,
-  index: PropTypes.any.isRequired,
-  value: PropTypes.any.isRequired,
-};
-
-export default function Home() {
-  const classes = useStyles();
-  const divRef = useRef(null);
-  const [value, setValue] = useState(0);
-  const [categoryList, setCategoryList] = useState([]);
-  const [productsList, setProductsList] = useState([]);
-  const [firstThree, setFirstThree] = useState([]);
-  const [allProducts, setAllProducts] = useState([]);
-  const [isViewMore, setIsViewMore] = useState(false);
-  const [categoryId, setCategoryId] = useState("");
+function Home(props) {
+  const { classes, value, getSavedQueries } = props;
+  const [prevKeyword, setPrevKeyword] = useState("");
+  const [currSearchPage, setCurrSearchPage] = useState(1);
+  const [currRecentPage, setCurrRecentPage] = useState(1);
+  const [searchImages, setSearchImages] = useState([]);
+  const [recentImages, setRecentImages] = useState([]);
+  const [savedQueries, setSavedQueries] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [dialogImage, setDialogImage] = useState("");
+  const [color] = useState("#000");
 
   useEffect(() => {
-    const options = {
-      method: "GET",
-      url: `${api}`,
-      headers: genericHeaders(),
-    };
-
-    axios
-      .request(options)
-      .then((response) => {
-        if (response?.status === 200) {
-          const { category_list } = response?.data;
-          setCategoryList(category_list);
-          setCategoryId(category_list[1].category_id);
-          getProducts(category_list[1].category_id);
-        }
-      })
-      .catch(function (error) {
-        console.error(error);
-      });
+    getRecent("default");
+    let savedQueries = JSON.parse(localStorage.getItem("savedQueries"));
+    if (savedQueries !== null) {
+      setSavedQueries(savedQueries);
+    } else {
+      localStorage.setItem("savedQueries", JSON.stringify([]));
+    }
   }, []);
 
   useEffect(() => {
-    if (divRef && divRef.current) {
-      divRef.current.focus();
-      window.scrollTo({
-        top: divRef.current.offsetTop - 50,
-        behavior: "smooth",
-      });
-    }
-    //eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [divRef.current]);
-
-  const handleChange = (event, newValue) => {
-    setValue(newValue);
-  };
-
-  const getProducts = (id) => {
-    const options = {
-      method: "GET",
-      url: `${productsApi}?category_id=${id}`,
+    const getUniqueBy = (prop, list) => {
+      const objUniq = list.reduce(
+        (res, item) => ({ ...res, [item[prop]]: item }),
+        {}
+      );
+      return Object.keys(objUniq).map((item) => objUniq[item]);
     };
+    const uniq = getUniqueBy("name", savedQueries);
+    localStorage.setItem("savedQueries", JSON.stringify(uniq));
+    getSavedQueries(uniq);
+  }, [savedQueries]);
 
-    axios
-      .request(options)
-      .then((response) => {
-        if (response?.status === 200) {
-          const firstThree = response?.data?.products.filter(
-            (product, index) => {
-              if (index <= 2) {
-                return product;
-              } else {
-                return null;
-              }
-            }
-          );
-          setProductsList(firstThree);
-          setFirstThree(firstThree);
-          setAllProducts(response?.data?.products);
+  useEffect(() => {
+    const timeoutHandler = setTimeout(() => {
+      if (value !== "") {
+        searchKeyword("search");
+        setRecentImages([]);
+        let savedQueries = JSON.parse(localStorage.getItem("savedQueries"));
+
+        let obj = { name: value };
+        if (savedQueries !== null) {
+          setSavedQueries([...savedQueries, obj]);
         }
-      })
-      .catch(function (error) {
-        console.error(error);
+      } else if (value === "") {
+        getRecent("default");
+        setSearchImages([]);
+      }
+    }, 1000);
+    return () => {
+      clearTimeout(timeoutHandler);
+    };
+  }, [value]);
+
+  const handleClickOpen = (val) => {
+    setOpen(true);
+    setDialogImage(val);
+  };
+  const handleClose = () => {
+    setOpen(false);
+  };
+
+  function getRecent(val) {
+    const params = `api_key=${process.env.REACT_APP_FLICKR_API_KEY}&format=json&nojsoncallback=1&per_page=12&page=${currRecentPage}`;
+
+    axios.get(recentUrl + params).then((res) => {
+      const urlArr = [];
+      res?.data?.photos?.photo.forEach((ph) => {
+        const photoObj = {
+          url: `https://farm${ph.farm}.staticflickr.com/${ph.server}/${ph.id}_${ph.secret}_m.jpg`,
+          title: ph.title,
+        };
+        urlArr.push(photoObj);
       });
-  };
+      if (val === "default") {
+        setRecentImages(urlArr);
+      } else {
+        setRecentImages([...recentImages, ...urlArr]);
+        setCurrRecentPage(currRecentPage + 1);
+      }
+    });
+  }
 
-  const viewMore = () => {
-    setIsViewMore(true);
-    setProductsList(allProducts);
-  };
+  function searchKeyword(val) {
+    const keyword = value.toLowerCase();
+    if (prevKeyword === keyword) {
+      setCurrSearchPage(currSearchPage + 1);
+    } else {
+      setCurrSearchPage(1);
+      setSearchImages([]);
+    }
+    setPrevKeyword(keyword);
 
-  const viewLess = () => {
-    setIsViewMore(false);
-    setProductsList(firstThree);
-  };
+    const params = `api_key=${process.env.REACT_APP_FLICKR_API_KEY}&text=${keyword}&format=json&nojsoncallback=1&per_page=12&page=${currSearchPage}`;
+
+    axios.get(searchUrl + params).then((res) => {
+      const urlArr = [];
+      res?.data?.photos?.photo.forEach((ph) => {
+        const photoObj = {
+          url: `https://farm${ph.farm}.staticflickr.com/${ph.server}/${ph.id}_${ph.secret}_m.jpg`,
+          title: ph.title,
+        };
+        urlArr.push(photoObj);
+      });
+      if (val === "search") {
+        setSearchImages(urlArr);
+      } else {
+        setSearchImages([...searchImages, ...urlArr]);
+      }
+    });
+  }
 
   return (
-    <div className={classes.root} id="section2">
-      <div className={classes.productsContainer}>
-        <Typography className={classes.productsText}>Our Products</Typography>
-      </div>
-      <Tabs
-        selectionFollowsFocus={categoryId ? true : false}
-        className={classes.categories}
-        value={value}
-        onChange={handleChange}
-        indicatorColor="primary"
-        textColor="primary"
-        variant="scrollable"
-        scrollButtons="auto"
-        TabIndicatorProps={{ style: { backgroundColor: "white" } }}
-      >
-        {categoryList?.map((category, index) => {
-          if (category.category_id !== "185") {
-            return (
-              <Tab
-                ref={category?.category_id === categoryId ? divRef : null}
-                key={category?.category_id}
-                className={classes.category}
-                label={
-                  <>
-                    <div
-                      className={
-                        category?.category_id === categoryId
-                          ? classes.activeCategoryData
-                          : classes.categoryData
-                      }
-                      style={{
-                        backgroundImage: `url(${category.category_image})`,
-                      }}
-                      onClick={() => {
-                        setCategoryId(category?.category_id);
-                        getProducts(category?.category_id);
-                        if (isViewMore && allProducts.length > 3) {
-                          viewLess();
-                        }
-                      }}
-                    >
-                      {category.category_name}
-                    </div>
-                  </>
-                }
-              />
-            );
-          } else {
-            return null;
-          }
-        })}
-      </Tabs>
-
-      {categoryList?.map((_, index) => (
-        <TabPanel value={value} index={index} key={index} component={"span"}>
-          {productsList.map((product, index) => (
-            <Product key={index} data={product} />
-          ))}
-        </TabPanel>
-      ))}
-
-      {value !== "" && (
-        <ProductAction
-          isViewMore={isViewMore}
-          categoryId={categoryId}
-          setCategoryId={(id) => setCategoryId(id)}
-          viewMore={viewMore}
-          viewLess={viewLess}
-          categoryList={categoryList}
-          allProducts={allProducts}
-          getProducts={(id) => getProducts(id)}
-        />
+    <div className={classes.root}>
+      {value !== "" ? (
+        <InfiniteScroll
+          className={classes.infiniteScroll}
+          next={() => searchKeyword("scroll")}
+          dataLength={searchImages.length}
+          hasMore={true}
+          loader={<BeatLoader color={color} css={override} size={20} />}
+        >
+          <Grid className={classes.container} container spacing={3}>
+            {searchImages.map((image, index) => (
+              <Grid item sm={4} lg={3} xl={3} xs={12} key={index}>
+                <img
+                  className={classes.scrollImage}
+                  src={image.url}
+                  alt={image.title}
+                  onClick={() => handleClickOpen(image)}
+                />
+              </Grid>
+            ))}
+          </Grid>
+        </InfiniteScroll>
+      ) : (
+        <InfiniteScroll
+          className={classes.infiniteScroll}
+          next={() => getRecent("scroll")}
+          dataLength={recentImages.length}
+          hasMore={true}
+          loader={<BeatLoader color={color} css={override} size={20} />}
+        >
+          <Grid className={classes.container} container spacing={3}>
+            {recentImages.map((image, index) => (
+              <Grid item sm={4} lg={3} xl={3} xs={12} key={index}>
+                <img
+                  className={classes.scrollImage}
+                  src={image.url}
+                  alt={image.title}
+                  onClick={() => handleClickOpen(image)}
+                />
+              </Grid>
+            ))}
+          </Grid>
+        </InfiniteScroll>
       )}
+
+      <Dialog
+        maxWidth="md"
+        onClose={handleClose}
+        aria-labelledby="customized-dialog-title"
+        open={open}
+      >
+        <DialogContent className={classes.dialogContent}>
+          <img
+            className={classes.dialogImage}
+            src={dialogImage.url}
+            alt={dialogImage.title}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
+Home.propTypes = {
+  classes: PropTypes.object.isRequired,
+};
+
+export default withStyles(styles)(Home);
