@@ -175,10 +175,14 @@ function Home(props) {
 
   return (
     <>
-      {((searchImages && searchImages.length > 0) ||
-        (recentImages && recentImages.length > 0)) && (
+      {(searchImages && searchImages.length > 0) ||
+      (recentImages && recentImages.length > 0) ? (
         <p className={classes.results}>
           <strong>{results}</strong> results found
+        </p>
+      ) : (
+        <p className={classes.results}>
+          <strong>0</strong> results found
         </p>
       )}
       <div className={classes.root}>
@@ -188,7 +192,12 @@ function Home(props) {
             next={() => searchKeyword("scroll")}
             dataLength={searchImages.length}
             hasMore={true}
-            loader={<BeatLoader color={color} css={override} size={20} />}
+            loader={
+              searchImages &&
+              searchImages.length > 0 && (
+                <BeatLoader color={color} css={override} size={20} />
+              )
+            }
           >
             <Grid className={classes.container} container spacing={3}>
               {searchImages.map((image, index) => (
@@ -209,7 +218,12 @@ function Home(props) {
             next={() => getRecent("scroll")}
             dataLength={recentImages.length}
             hasMore={true}
-            loader={<BeatLoader color={color} css={override} size={20} />}
+            loader={
+              recentImages &&
+              recentImages.length > 0 && (
+                <BeatLoader color={color} css={override} size={20} />
+              )
+            }
           >
             <Grid className={classes.container} container spacing={3}>
               {recentImages.map((image, index) => (
