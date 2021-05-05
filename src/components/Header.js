@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { makeStyles } from "@material-ui/core/styles";
 import Autosuggest from "react-autosuggest";
 
@@ -28,6 +28,7 @@ const useStyles = makeStyles(() => ({
   },
   searchPhotos: {
     textAlign: "center",
+    margin: "14px",
   },
   autoSuggestContainer: {
     display: "flex",
@@ -43,6 +44,7 @@ export default function Header(props) {
   const { savedQueries } = props;
   const [value, setValue] = useState("");
   const [suggestions, setSuggestions] = useState([]);
+  const inputRef = useRef();
 
   useEffect(() => {
     props.getValues(value);
@@ -55,7 +57,6 @@ export default function Header(props) {
   const inputProps = {
     placeholder: "Enter a photo name",
     value: value,
-    // type: "search",
     onChange: onChange,
   };
 
@@ -82,9 +83,9 @@ export default function Header(props) {
           className={classes.dismissAutoSuggest}
           onClick={() => {
             localStorage.setItem("savedQueries", JSON.stringify([]));
-            const value = document
-              .querySelector(".react-autosuggest__input")
-              .blur();
+            inputRef.current.autowhatever.itemsContainer.classList.remove(
+              "react-autosuggest__suggestions-container--open"
+            );
           }}
         >
           Dismiss auto suggest
@@ -105,10 +106,11 @@ export default function Header(props) {
     <>
       <div className={classes.header}>
         <div className={classes.headerContainer}>
-          <h3 className={classes.searchPhotos}>Search Photos</h3>
+          <h2 className={classes.searchPhotos}>Search Photos</h2>
 
           <div className={classes.autoSuggestContainer}>
             <Autosuggest
+              ref={inputRef}
               className={classes.autoSuggest}
               suggestions={suggestions}
               onSuggestionsFetchRequested={onSuggestionsFetchRequested}
